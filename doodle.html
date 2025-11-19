@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Salto Espacial: Hangar Update</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --neon-blue: #00f2ff;
+            --neon-gold: #ffd700;
+            --neon-red: #ff4757;
+            --bg-panel: rgba(18, 22, 33, 0.98);
+        }
+
+        body {
+            margin: 0; padding: 0; overflow: hidden;
+            background-color: #000;
+            font-family: 'Rajdhani', sans-serif;
+            touch-action: none; user-select: none; -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #game-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; }
+        canvas { display: block; width: 100%; height: 100%; }
+
+        /* UI */
+        .ui-layer {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 10;
+        }
+
+        #hud-bar {
+            position: absolute; top: 0; left: 0; width: 100%;
+            padding: 15px 20px; box-sizing: border-box;
+            display: flex; justify-content: space-between; align-items: center;
+            pointer-events: none; z-index: 20;
+        }
+
+        .stat-pill {
+            background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.1);
+            color: #fff; padding: 8px 16px; border-radius: 30px;
+            font-size: 20px; font-weight: 800; backdrop-filter: blur(5px);
+            box-shadow: 0 4px 5px rgba(0,0,0,0.5);
+        }
+
+        #btn-pause {
+            width: 45px; height: 45px; border-radius: 50%;
+            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+            color: #fff; display: flex; justify-content: center; align-items: center;
+            font-weight: bold; cursor: pointer; pointer-events: auto; z-index: 30;
+        }
+
+        /* Menus */
+        .modal {
+            position: absolute; width: 85%; max-width: 350px;
+            background: var(--bg-panel);
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 0 60px rgba(0,0,0,0.95);
+            border-radius: 20px; padding: 25px;
+            text-align: center; display: none; 
+            flex-direction: column; gap: 15px; align-items: center;
+            pointer-events: auto; z-index: 1000;
+        }
+
+        .title-main {
+            font-size: 36px; margin: 0; line-height: 1;
+            color: #fff; text-transform: uppercase; letter-spacing: 2px;
+            text-shadow: 0 0 15px var(--neon-blue);
+        }
+
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+        .stat-card { 
+            background: rgba(255,255,255,0.03); border-radius: 12px; padding: 10px; 
+            border: 1px solid rgba(255,255,255,0.05); 
+        }
+        .stat-val { font-size: 22px; color: #fff; font-weight: 800; }
+        .stat-lbl { font-size: 12px; color: #888; font-weight: 600; }
+
+        .btn {
+            width: 100%; padding: 14px; border: none; border-radius: 12px;
+            color: #000; font-family: 'Rajdhani', sans-serif;
+            font-size: 20px; font-weight: 800; text-transform: uppercase;
+            cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .btn-primary { background: linear-gradient(135deg, #00f2ff, #0984e3); }
+        .btn-gold { background: linear-gradient(135deg, #ffd700, #e67e22); }
+        .btn-outline {
+            background: transparent; border: 2px solid rgba(255,255,255,0.15);
+            color: #fff; 
+        }
+
+        /* --- ESTILOS DA LOJA (CORRIGIDOS) --- */
+        #shop-grid {
+            width: 100%; max-height: 240px; overflow-y: auto;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+            padding-right: 5px;
+        }
+        .shop-item {
+            background: rgba(255,255,255,0.05); 
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px; padding: 12px 8px; 
+            position: relative; cursor: pointer;
+            display: flex; flex-direction: column; align-items: center;
+            transition: transform 0.1s;
+        }
+        .shop-item:active { transform: scale(0.95); }
+        .shop-item.active { 
+            border-color: var(--neon-blue); 
+            background: rgba(0, 242, 255, 0.15); 
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
+        }
+        
+        /* Textos da Loja - Agora Visíveis */
+        .shop-name {
+            color: #ffffff; /* Branco Puro */
+            font-size: 18px;
+            font-weight: 800;
+            margin: 5px 0 2px 0;
+            text-transform: uppercase;
+        }
+        
+        .shop-desc {
+            color: #a4b0be; /* Cinza Claro */
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .shop-price {
+            font-size: 14px;
+            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: rgba(0,0,0,0.3);
+        }
+        
+        .price-buy { color: var(--neon-gold); }
+        .price-owned { color: var(--neon-blue); }
+
+        .skin-dot { 
+            width: 30px; height: 30px; 
+            border-radius: 50%; 
+            margin-bottom: 5px; 
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+
+        .hidden { display: none !important; }
+        .flex { display: flex !important; }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="ui-layer">
+        <!-- HUD -->
+        <div id="hud-bar" class="hidden">
+            <div class="stat-pill">ALT: <span id="hud-score">0</span></div>
+            <div class="stat-pill" style="color:var(--neon-gold)">$ <span id="hud-coins">0</span></div>
+            <div id="btn-pause">II</div>
+        </div>
+
+        <!-- MENU -->
+        <div id="menu-main" class="modal flex">
+            <h1 class="title-main">SALTO ESPACIAL</h1>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-lbl">RECORDE</span>
+                    <div class="stat-val" id="menu-best">0</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-lbl">SALDO</span>
+                    <div class="stat-val" style="color:var(--neon-gold)" id="menu-coins">0</div>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="Game.start()">INICIAR MISSÃO</button>
+            <button class="btn btn-gold" onclick="UI.openShop()">HANGAR (LOJA)</button>
+        </div>
+
+        <!-- LOJA (HANGAR) -->
+        <div id="menu-shop" class="modal">
+            <h2 style="color:var(--neon-gold); margin:0">HANGAR</h2>
+            <div style="font-size:14px; color:#ccc; margin-bottom:10px;">SALDO ATUAL: <span id="shop-bal" style="color:var(--neon-gold); font-weight:bold; font-size:18px">0</span></div>
+            <div id="shop-grid"></div>
+            <button class="btn btn-outline" onclick="UI.closeShop()">VOLTAR</button>
+        </div>
+
+        <!-- GAME OVER -->
+        <div id="menu-over" class="modal">
+            <h1 class="title-main" style="color:var(--neon-red)">EXPLOSÃO</h1>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-lbl">SCORE</span>
+                    <div class="stat-val" id="over-score">0</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-lbl">GANHOS</span>
+                    <div class="stat-val" style="color:var(--neon-gold)" id="over-coins">0</div>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="Game.start()">TENTAR NOVAMENTE</button>
+            <button class="btn btn-outline" onclick="Game.toMenu()">MENU PRINCIPAL</button>
+        </div>
+
+        <!-- PAUSE -->
+        <div id="menu-pause" class="modal">
+            <h1 class="title-main">PAUSADO</h1>
+            <button class="btn btn-primary" onclick="Game.togglePause()">CONTINUAR</button>
+            <button class="btn btn-outline" onclick="Game.toMenu()">SAIR</button>
+        </div>
+    </div>
+
+<script>
+    // --- CONFIGURAÇÃO ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    window.addEventListener('resize', resize); resize();
+
+    // --- GRÁFICOS ---
+    function drawRect(x,y,w,h,r,c,s) {
+        ctx.beginPath(); ctx.roundRect(x,y,w,h,r); 
+        ctx.fillStyle=c; ctx.fill();
+        if(s){ ctx.strokeStyle=s; ctx.lineWidth=2; ctx.stroke(); }
+    }
+    function drawCircle(x,y,r,c) {
+        ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fillStyle=c; ctx.fill();
+    }
+
+    // --- DADOS & SKINS (TEXTOS MELHORADOS) ---
+    const Skins = [
+        { id:'def', name:'ALPHA', cost:0, c1:'#b2bec3', c2:'#636e72', fire:'#ff9f43', desc:'EQUILIBRADA', stats:{s:1, j:1, m:1, fuel:1, mag:0} },
+        { id:'spd', name:'COMET', cost:400, c1:'#ff4757', c2:'#2f3542', fire:'#ffeaa7', desc:'VELOCIDADE +30%', stats:{s:1.3, j:1, m:1, fuel:1, mag:0} }, 
+        { id:'ufo', name:'XENON', cost:1000, c1:'#55efc4', c2:'#00b894', fire:'#81ecec', desc:'IMÃ DE MOEDAS', stats:{s:1.1, j:1.1, m:1, fuel:1, mag:1} }, 
+        { id:'gld', name:'MIDAS', cost:2500, c1:'#ffd700', c2:'#d35400', fire:'#fab1a0', desc:'OURO x2 + TURBO', stats:{s:1, j:1, m:2, fuel:1.5, mag:0} } 
+    ];
+
+    const Data = {
+        coins: 0, unlocked: ['def'], skin: 'def', best: 0, isDark: true,
+        load() {
+            try { Object.assign(this, JSON.parse(localStorage.getItem('spaceV4')||'{}')); } catch(e){}
+        },
+        save() { localStorage.setItem('spaceV4', JSON.stringify(this)); },
+        getStats() { return Skins.find(s=>s.id===this.skin).stats; }
+    };
+    Data.load();
+
+    // --- ÁUDIO ---
+    const Sfx = {
+        ctx: null,
+        init() { if(!this.ctx){ const AC=window.AudioContext||window.webkitAudioContext; if(AC)this.ctx=new AC(); } if(this.ctx)this.ctx.resume(); },
+        play(f,t,d,v=0.1) {
+            if(!this.ctx)return;
+            const o=this.ctx.createOscillator(), g=this.ctx.createGain();
+            o.type=t; o.frequency.value=f; g.gain.value=v;
+            o.connect(g); g.connect(this.ctx.destination);
+            o.start(); o.stop(this.ctx.currentTime+d);
+        },
+        jump(){ this.play(200,'sine',0.2,0.15); },
+        coin(){ this.play(1200,'sine',0.1,0.05); setTimeout(()=>this.play(1800,'sine',0.1,0.05),80); },
+        boom(){ this.play(80,'sawtooth',0.5,0.3); },
+        bonus(){ this.play(600,'square',0.1,0.1); setTimeout(()=>this.play(900,'square',0.2,0.1),100); }
+    };
+
+    // --- LÓGICA PRINCIPAL ---
+    const CONST = { G: 0.4, SPEED: 7, FPS: 60 };
+    let state = 'menu', score = 0, sessionCoins = 0, difficulty = 1;
+    let entities = { plats:[], coins:[], items:[], bombs:[], stars:[] };
+    const Player = { x:0, y:0, w:40, h:50, vx:0, vy:0, tilt:0, jet:0 };
+    const Input = { l:false, r:false };
+
+    const Game = {
+        init() {
+            entities={ plats:[], coins:[], items:[], bombs:[], stars:[] };
+            score=0; sessionCoins=0; difficulty=1;
+            Player.x=canvas.width/2-20; Player.y=canvas.height-200; Player.vx=0; Player.vy=-10; Player.jet=0;
+            
+            for(let i=0; i<60; i++) entities.stars.push({x:Math.random()*canvas.width, y:Math.random()*canvas.height, s:Math.random()*2});
+            for(let i=0; i<7; i++) {
+                entities.plats.push({
+                    x: Math.random()*(canvas.width-80), 
+                    y: canvas.height-100-i*140, w:80, h:15, type:'static', sp:0
+                });
+            }
+            entities.plats[0].x = Player.x-20; entities.plats[0].w=100;
+            Sfx.init();
+        },
+
+        createPlat(y) {
+            let x = Math.random()*(canvas.width-80);
+            let type = Math.random() < (0.1 + difficulty*0.05) ? 'move' : 'static';
+            let speed = (1.2 + difficulty*0.2) * (Math.random()<0.5?1:-1);
+            return { x, y, w:80, h:15, type, sp:speed };
+        },
+
+        spawnPlat(y) {
+            let p1 = this.createPlat(y);
+            entities.plats.push(p1);
+            let hasBomb = false;
+            let rnd = Math.random();
+
+            if(rnd < Math.min(0.05 + difficulty*0.01, 0.25)) { 
+                entities.bombs.push({x:p1.x+25, y:p1.y-30});
+                hasBomb = true;
+            } 
+            else if(rnd < 0.10) entities.items.push({x:p1.x+20, y:p1.y-35, t:'jet'});
+            else if(rnd < 0.15) entities.items.push({x:p1.x+20, y:p1.y-35, t:'box'});
+            else if(rnd < 0.6) entities.coins.push({x:p1.x+35, y:p1.y-40, a:0});
+
+            if(hasBomb) {
+                let safeX = (p1.x > canvas.width/2) ? Math.random()*(canvas.width/2 - 80) : Math.random()*(canvas.width/2) + canvas.width/2;
+                let p2 = this.createPlat(y - (Math.random()*20));
+                p2.x = safeX; p2.type = 'static';
+                entities.plats.push(p2);
+                if(Math.random() < 0.5) entities.coins.push({x:p2.x+35, y:p2.y-40, a:0});
+            }
+        },
+
+        start() {
+            this.init(); state='playing'; UI.show('hud-bar');
+            requestAnimationFrame(this.loop.bind(this));
+        },
+        togglePause() {
+            if(state==='playing'){ state='paused'; UI.show('menu-pause'); }
+            else if(state==='paused'){ state='playing'; UI.show('hud-bar'); requestAnimationFrame(this.loop.bind(this)); }
+        },
+        toMenu() { state='menu'; UI.menu(); },
+        
+        loop() {
+            if(state!=='playing') {
+                if(state==='menu') this.drawMenuBg();
+                return;
+            }
+            requestAnimationFrame(this.loop.bind(this));
+            this.update();
+            this.draw();
+        },
+
+        update() {
+            const st = Data.getStats();
+            difficulty = 1 + (score/5000); 
+            let maxS = (CONST.SPEED * st.s) + (difficulty*0.3); 
+
+            if(Input.l) Player.vx -= 0.8; else if(Input.r) Player.vx += 0.8; else Player.vx *= 0.85;
+            if(Player.vx > maxS) Player.vx=maxS; if(Player.vx < -maxS) Player.vx=-maxS;
+            
+            Player.x += Player.vx;
+            if(Player.x>canvas.width) Player.x=-40; if(Player.x<-40) Player.x=canvas.width;
+
+            if(Player.jet>0) { Player.vy=-14; Player.jet--; }
+            else Player.vy += CONST.G;
+            
+            Player.y += Player.vy;
+
+            if(Player.y < canvas.height/2) {
+                let d = canvas.height/2 - Player.y;
+                Player.y = canvas.height/2;
+                score += Math.floor(d);
+                document.getElementById('hud-score').innerText = score;
+
+                [entities.plats, entities.coins, entities.items, entities.bombs].forEach(arr => arr.forEach(e=>e.y+=d));
+                
+                if(entities.plats[entities.plats.length-1].y > 120) this.spawnPlat(-30);
+            }
+
+            if(Player.vy>0 && Player.jet<=0) {
+                entities.plats.forEach(p => {
+                    if(Player.x+30>p.x && Player.x+10<p.x+p.w && Player.y+50>p.y && Player.y+50<p.y+20) {
+                        Player.vy = -12 * st.j;
+                        Sfx.jump();
+                    }
+                });
+            }
+            
+            entities.plats.forEach(p => { if(p.type==='move') { p.x+=p.sp; if(p.x<=0||p.x+p.w>=canvas.width) p.sp*=-1; } });
+
+            entities.coins.forEach((c,i) => {
+                let d = Math.hypot((Player.x+20)-c.x, (Player.y+25)-c.y);
+                if(d < (st.mag?200:40)) { 
+                    if(st.mag && d>30) { c.x+=(Player.x+20-c.x)*0.2; c.y+=(Player.y+25-c.y)*0.2; }
+                    else {
+                        entities.coins.splice(i,1); sessionCoins+=1*st.m;
+                        document.getElementById('hud-coins').innerText = sessionCoins;
+                        Sfx.coin();
+                    }
+                }
+            });
+
+            entities.items.forEach((it,i) => {
+                let d = Math.hypot((Player.x+20)-(it.x+15), (Player.y+25)-(it.y+15));
+                if(d < 40) {
+                    entities.items.splice(i,1);
+                    if(it.t==='jet') { Player.jet = 150 * st.fuel; }
+                    if(it.t==='box') { sessionCoins+=10; Sfx.bonus(); }
+                }
+            });
+
+            entities.bombs.forEach(b => {
+                let d = Math.hypot((Player.x+20)-(b.x+15), (Player.y+25)-(b.y+15));
+                if(d < 35 && Player.jet<=0) { Sfx.boom(); this.over(); }
+            });
+
+            const limit = canvas.height;
+            entities.plats = entities.plats.filter(e=>e.y<limit);
+            entities.coins = entities.coins.filter(e=>e.y<limit);
+            entities.items = entities.items.filter(e=>e.y<limit);
+            entities.bombs = entities.bombs.filter(e=>e.y<limit);
+
+            if(Player.y > limit) this.over();
+        },
+
+        draw() {
+            let g = ctx.createLinearGradient(0,0,0,canvas.height);
+            if(score>10000) { g.addColorStop(0,'#300'); g.addColorStop(1,'#100'); }
+            else if(score>5000) { g.addColorStop(0,'#102'); g.addColorStop(1,'#001'); }
+            else { g.addColorStop(0,'#001'); g.addColorStop(1,'#000'); }
+            ctx.fillStyle=g; ctx.fillRect(0,0,canvas.width,canvas.height);
+
+            ctx.fillStyle='#fff';
+            entities.stars.forEach(s=>{
+                if(state==='playing') s.y += (Player.vy<0?1:0.2); else s.y+=0.2;
+                if(s.y>canvas.height)s.y=0;
+                ctx.globalAlpha=Math.random(); ctx.beginPath(); ctx.arc(s.x,s.y,s.s,0,6.28); ctx.fill();
+            });
+            ctx.globalAlpha=1;
+
+            entities.plats.forEach(p => {
+                let c = Data.isDark ? (p.type==='move'?'#e056fd':'#00f2ff') : '#0984e3';
+                ctx.shadowBlur=10; ctx.shadowColor=c; ctx.fillStyle=Data.isDark?'#2d3436':'#fff'; 
+                drawRect(p.x, p.y, p.w, p.h, 4, Data.isDark?'#2d3436':'#fff', c);
+                ctx.shadowBlur=0; ctx.fillStyle='rgba(255,255,255,0.2)'; ctx.fillRect(p.x+10,p.y+4,p.w-20,2);
+            });
+
+            entities.items.forEach(i => {
+                if(i.t==='jet') { 
+                    ctx.fillStyle='#bdc3c7'; drawRect(i.x, i.y, 12, 25, 4, '#bdc3c7'); drawRect(i.x+18, i.y, 12, 25, 4, '#bdc3c7');
+                    ctx.fillStyle='#ff4757'; ctx.fillRect(i.x+5, i.y+8, 20, 6);
+                } else { 
+                    ctx.shadowBlur=15; ctx.shadowColor='#a29bfe';
+                    drawRect(i.x, i.y, 30, 30, 5, '#6c5ce7');
+                    ctx.fillStyle='#fff'; ctx.font='bold 20px Arial'; ctx.fillText('?', i.x+10, i.y+22);
+                    ctx.shadowBlur=0;
+                }
+            });
+
+            entities.bombs.forEach(b => {
+                ctx.shadowBlur=15; ctx.shadowColor='#ff4757';
+                drawRect(b.x, b.y, 30, 30, 5, '#ff4757');
+                ctx.fillStyle='#2d3436'; ctx.font='bold 20px Arial'; ctx.fillText('!', b.x+12, b.y+22);
+                ctx.shadowBlur=0;
+            });
+
+            entities.coins.forEach(c => {
+                let bob = c.y + Math.sin(c.a)*4; c.a+=0.1;
+                ctx.shadowBlur=10; ctx.shadowColor='#ffd700';
+                drawCircle(c.x, bob, 8, '#ffd700');
+                drawCircle(c.x-3, bob-3, 2, '#fff');
+                ctx.shadowBlur=0;
+            });
+
+            this.drawPlayer();
+        },
+
+        drawPlayer() {
+            ctx.save(); ctx.translate(Player.x+20, Player.y+25);
+            const s = Data.getStats(); 
+            const sk = Skins.find(k=>k.id===Data.skin);
+            let t = (Player.vx/10)*0.4; Player.tilt = Player.tilt*0.8 + t*0.2;
+            ctx.rotate(Player.tilt);
+
+            if(sk.id==='ufo') {
+                ctx.beginPath(); ctx.ellipse(0,5,25,8,0,0,6.28); ctx.fillStyle=sk.c1; ctx.fill();
+                ctx.beginPath(); ctx.arc(0,-2,12,0,6.28); ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.fill();
+            } else {
+                if(Player.jet>0) {
+                    ctx.fillStyle='#bdc3c7'; ctx.fillRect(-18,-10,10,25); ctx.fillRect(8,-10,10,25);
+                    ctx.fillStyle='#00f2ff';
+                    ctx.beginPath(); ctx.moveTo(-13,15); ctx.lineTo(-13,35+Math.random()*15); ctx.lineTo(-8,15); ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(13,15); ctx.lineTo(13,35+Math.random()*15); ctx.lineTo(18,15); ctx.fill();
+                } else if(Player.vy<0) {
+                    ctx.fillStyle=sk.fire;
+                    ctx.beginPath(); ctx.moveTo(-5,18); ctx.lineTo(0,30+Math.random()*10); ctx.lineTo(5,18); ctx.fill();
+                }
+                ctx.fillStyle=sk.c1; ctx.beginPath(); ctx.moveTo(0,-25); ctx.lineTo(22,22); ctx.lineTo(0,10); ctx.lineTo(-22,22); ctx.fill();
+                ctx.fillStyle=sk.c2; ctx.beginPath(); ctx.moveTo(0,-25); ctx.lineTo(0,10); ctx.lineTo(-22,22); ctx.fill();
+                let g=ctx.createLinearGradient(-5,-10,5,5); g.addColorStop(0,'#81ecec'); g.addColorStop(1,'#00cec9');
+                ctx.fillStyle=g; ctx.beginPath(); ctx.ellipse(0,-5,6,10,0,0,6.28); ctx.fill();
+            }
+            ctx.restore();
+        },
+
+        drawMenuBg() {
+            this.draw();
+            let oy=Player.y; Player.y=canvas.height/2+Math.sin(Date.now()/500)*20; Player.x=canvas.width/2-20;
+            this.drawPlayer(); Player.y=oy;
+            requestAnimationFrame(this.loop.bind(this));
+        },
+
+        over() {
+            state='over';
+            if(score>Data.best) Data.best=score;
+            Data.coins+=sessionCoins; Data.save();
+            document.getElementById('over-score').innerText=score;
+            document.getElementById('over-coins').innerText=sessionCoins;
+            UI.show('menu-over');
+        },
+        buy(s) {
+            if(Data.unlocked.includes(s.id)) { Data.skin=s.id; Data.save(); UI.shop(); }
+            else if(Data.coins>=s.cost) {
+                Data.coins-=s.cost; Data.unlocked.push(s.id); Data.skin=s.id; 
+                Data.save(); Sfx.coin(); UI.shop();
+                document.getElementById('shop-bal').innerText=Data.coins;
+            }
+        }
+    };
+
+    // --- UI ---
+    const UI = {
+        show(id) {
+            document.querySelectorAll('.modal').forEach(e=>e.classList.remove('flex'));
+            document.getElementById('hud-bar').classList.add('hidden');
+            if(id==='hud-bar') document.getElementById(id).classList.remove('hidden');
+            else { document.getElementById(id).classList.add('flex'); }
+        },
+        menu() {
+            Game.init(); state='menu'; this.show('menu-main');
+            document.getElementById('menu-coins').innerText=Data.coins;
+            document.getElementById('menu-best').innerText=Data.best;
+            Game.loop();
+        },
+        openShop() { 
+            document.getElementById('shop-bal').innerText=Data.coins; 
+            this.shop(); this.show('menu-shop'); 
+        },
+        closeShop() { this.show('menu-main'); },
+        shop() {
+            const g=document.getElementById('shop-grid'); g.innerHTML='';
+            Skins.forEach(s=>{
+                const owned=Data.unlocked.includes(s.id), active=Data.skin===s.id;
+                const d=document.createElement('div');
+                d.className=`shop-item ${active?'active':''}`;
+                d.innerHTML=`
+                    <div class="skin-dot" style="background:${s.c1}"></div>
+                    <div class="shop-name">${s.name}</div>
+                    <div class="shop-desc">${s.desc}</div>
+                    <div class="shop-price ${owned?'price-owned':'price-buy'}">${owned?(active?'USANDO':'COMPRADO'):'$ '+s.cost}</div>
+                `;
+                d.onclick=()=>Game.buy(s); g.appendChild(d);
+            });
+        }
+    };
+
+    // --- CONTROLES ---
+    document.getElementById('btn-pause').onclick=(e)=>{ e.stopPropagation(); Game.togglePause(); };
+    
+    window.addEventListener('touchstart', e=>{
+        if(e.target.closest('.modal') || e.target.id==='btn-pause') return;
+        e.preventDefault(); 
+        if(e.touches[0].clientX < window.innerWidth/2) Input.l=true; else Input.r=true;
+    }, {passive:false});
+    
+    window.addEventListener('touchend', ()=>{ Input.l=false; Input.r=false; });
+    window.addEventListener('keydown', e=>{if(e.code==='ArrowLeft')Input.l=true;if(e.code==='ArrowRight')Input.r=true;});
+    window.addEventListener('keyup', e=>{if(e.code==='ArrowLeft')Input.l=false;if(e.code==='ArrowRight')Input.r=false;});
+    
+    // Iniciar
+    window.onload = () => UI.menu();
+
+</script>
+</body>
+</html>
